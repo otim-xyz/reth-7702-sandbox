@@ -13,16 +13,14 @@
 )]
 #![deny(rust_2018_idioms, unsafe_code)]
 
-use alloy_rlp::{Encodable, RlpEncodable};
-use alloy_signer::{Signer, SignerSync};
-use alloy_signer_wallet::LocalWallet;
+mod eip7702;
+
+use alloy_primitives::U160;
+use eip7702::TxEip7702;
 use futures_util::StreamExt;
-n
 use reth::{
     builder::{NodeBuilder, NodeHandle},
-    primitives::{
-        transaction::TxEip7702, IntoRecoveredTransaction, Transaction,
-    },
+    primitives::IntoRecoveredTransaction,
     providers::CanonStateSubscriptions,
     rpc::{
         compat::transaction::transaction_to_call_request,
@@ -34,13 +32,16 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_ethereum::EthereumNode;
-use reth_primitives::{
-    b256, hex, Address, Bytes, ChainSpec, Genesis, B256, U256,
-};
+use reth_primitives::{b256, hex, ChainSpec, Genesis, U256};
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    let k = "d42bf368dcc16cfa37bfec8f0529fd908a7049dfa45f651926b5b138450b8817";
+    let _pk = "407935c2575e9a572a3ede4c772be0eb5cc557fc658f2cc4c7b56c694f1c8ed4a20338ce02c642531290909db39b52acda008f8783a7ac69d388d2faf5413563";
+    let _address1 = "8ef4c3785d21f0e3c83e8518ce7fa70f0b00ba5b";
+    let address2 = "6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b";
+
     let tasks = TaskManager::current();
 
     // create node config
@@ -84,78 +85,26 @@ async fn main() -> eyre::Result<()> {
     let mut notifications = node.provider.canonical_state_stream();
 
     // 4 || rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, data, access_list, [[contract_code, y_parity, r, s], ...], signature_y_parity, signature_r, signature_s])
-
-    let signer = LocalWallet::random();
-
-    #[derive(RlpEncodable)]
-    struct AccessListItem {
-        address: Address,
-        storage_keys: Vec<B256>,
-    }
-
-    #[derive(RlpEncodable)]
-    struct CodeBundle {
-        address: Address,
-        signature_y_parity: bool,
-        signature_r: U256,
-        signature_s: U256,
-    }
-
-    #[derive(RlpEncodable)]
-    struct TxEip7702 {
-        chain_id: u64,
-        nonce: u64,
-        max_priority_fee_per_gas: u128,
-        max_fee_per_gas: u128,
-        gas_limit: u64,
-        to: Address,
-        data: Bytes,
-        access_list: Vec<AccessListItem>,
-        code_bundles: Vec<CodeBundle>,
-        // signature_y_parity: bool,
-        // signature_r: U256,
-        // signature_s: U256,
-    }
-
     let tx = TxEip7702 {
-        chain_id: 0,
+        chain_id: 1,
         nonce: 0,
-        max_priority_fee_per_gas: 0,
-        max_fee_per_gas: 0,
-        gas_limit: 0,
-        to: Address::from(hex!("6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b")),
-        data: Bytes::default(),
+        max_priority_fee_per_gas: 1_234,
+        max_fee_per_gas: 4_567,
+        gas_limit: 8_910,
+        to: U160::from_be_bytes::<20>(
+            hex::decode(address2).unwrap().try_into().unwrap(),
+        ),
+        amount: U256::from(1_000_000),
+        data: 0,
         access_list: vec![],
-        code_bundles: vec![CodeBundle {
-            address: Address::from(hex!(
-                "6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b"
-            )),
-            signature_y_parity: false,
-            signature_r: U256::from(0),
-            signature_s: U256::from(0),
-        }],
-        // signature_y_parity: false,
-        // signature_r: U256::from(0),
-        // signature_s: U256::from(0),
+        code_bundles: vec![],
     };
-
-    let mut buffer = Vec::<u8>::new();
-
-    buffer.push(4);
-    tx.encode(&mut buffer);
-
-    signer.sign_transaction_sync(&buffer);
-
-    let tx_hex = buffer
-        .iter()
-        .map(|&b| format!("{:02x}", b))
-        .collect::<String>();
-
-    println!("encoded: {tx_hex}");
+    let signed_tx = tx.sign(k);
+    let encoded_tx = signed_tx.rlp_encode();
 
     let eth_api = node.rpc_registry.eth_api();
 
-    let hash = eth_api.send_raw_transaction(buffer.into()).await?;
+    let hash = eth_api.send_raw_transaction(encoded_tx.into()).await?;
 
     let expected = b256!(
         "b1c6512f4fc202c04355fbda66755e0e344b152e633010e8fd75ecec09b63398"
@@ -183,6 +132,9 @@ fn custom_chain() -> Arc<ChainSpec> {
     "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "coinbase": "0x0000000000000000000000000000000000000000",
     "alloc": {
+        "0x8ef4c3785d21f0e3c83e8518ce7fa70f0b00ba5b": {
+            "balance": "0x4a47e3c12448f4ad000000"
+        },
         "0x6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b": {
             "balance": "0x4a47e3c12448f4ad000000"
         }
