@@ -13,10 +13,16 @@
 )]
 #![deny(rust_2018_idioms, unsafe_code)]
 
+use alloy_rlp::{Encodable, RlpEncodable};
+use alloy_signer::{Signer, SignerSync};
+use alloy_signer_wallet::LocalWallet;
 use futures_util::StreamExt;
+n
 use reth::{
     builder::{NodeBuilder, NodeHandle},
-    primitives::IntoRecoveredTransaction,
+    primitives::{
+        transaction::TxEip7702, IntoRecoveredTransaction, Transaction,
+    },
     providers::CanonStateSubscriptions,
     rpc::{
         compat::transaction::transaction_to_call_request,
@@ -28,7 +34,9 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_ethereum::EthereumNode;
-use reth_primitives::{b256, hex, ChainSpec, Genesis};
+use reth_primitives::{
+    b256, hex, Address, Bytes, ChainSpec, Genesis, B256, U256,
+};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -75,12 +83,79 @@ async fn main() -> eyre::Result<()> {
 
     let mut notifications = node.provider.canonical_state_stream();
 
-    // submit tx through rpc
-    let raw_tx = hex!("02f876820a28808477359400847735940082520894ab0840c0e43688012c1adb0f5e3fc665188f83d28a029d394a5d630544000080c080a0a044076b7e67b5deecc63f61a8d7913fab86ca365b344b5759d1fe3563b4c39ea019eab979dd000da04dfc72bb0377c092d30fd9e1cab5ae487de49586cc8b0090");
+    // 4 || rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, data, access_list, [[contract_code, y_parity, r, s], ...], signature_y_parity, signature_r, signature_s])
+
+    let signer = LocalWallet::random();
+
+    #[derive(RlpEncodable)]
+    struct AccessListItem {
+        address: Address,
+        storage_keys: Vec<B256>,
+    }
+
+    #[derive(RlpEncodable)]
+    struct CodeBundle {
+        address: Address,
+        signature_y_parity: bool,
+        signature_r: U256,
+        signature_s: U256,
+    }
+
+    #[derive(RlpEncodable)]
+    struct TxEip7702 {
+        chain_id: u64,
+        nonce: u64,
+        max_priority_fee_per_gas: u128,
+        max_fee_per_gas: u128,
+        gas_limit: u64,
+        to: Address,
+        data: Bytes,
+        access_list: Vec<AccessListItem>,
+        code_bundles: Vec<CodeBundle>,
+        // signature_y_parity: bool,
+        // signature_r: U256,
+        // signature_s: U256,
+    }
+
+    let tx = TxEip7702 {
+        chain_id: 0,
+        nonce: 0,
+        max_priority_fee_per_gas: 0,
+        max_fee_per_gas: 0,
+        gas_limit: 0,
+        to: Address::from(hex!("6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b")),
+        data: Bytes::default(),
+        access_list: vec![],
+        code_bundles: vec![CodeBundle {
+            address: Address::from(hex!(
+                "6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b"
+            )),
+            signature_y_parity: false,
+            signature_r: U256::from(0),
+            signature_s: U256::from(0),
+        }],
+        // signature_y_parity: false,
+        // signature_r: U256::from(0),
+        // signature_s: U256::from(0),
+    };
+
+    let mut buffer = Vec::<u8>::new();
+
+    buffer.push(4);
+    tx.encode(&mut buffer);
+
+    signer.sign_transaction_sync(&buffer);
+
+    let tx_hex = buffer
+        .iter()
+        .map(|&b| format!("{:02x}", b))
+        .collect::<String>();
+
+    println!("encoded: {tx_hex}");
 
     let eth_api = node.rpc_registry.eth_api();
 
-    let hash = eth_api.send_raw_transaction(raw_tx.into()).await?;
+    let hash = eth_api.send_raw_transaction(buffer.into()).await?;
 
     let expected = b256!(
         "b1c6512f4fc202c04355fbda66755e0e344b152e633010e8fd75ecec09b63398"
