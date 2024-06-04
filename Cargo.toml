@@ -11,12 +11,11 @@ reth-node-ethereum = { path = "../reth/crates/ethereum/node" }
 reth-primitives = { path = "../reth/crates/primitives" }
 
 # external dependencies
-alloy-primitives = { version = "0.7.4", features = ["rlp"] }
-alloy-rlp = { version = "0.3.5", features = [] }
 eyre = { version = "0.6.12", features = [] }
 futures-util = { version = "0.3.30", features = [] }
 hex = { version = "0.4.3", features = [] }
-k256 = { version = "0.13.3", features = [] }
 serde_json = { version = "1.0.117", features = [] }
-sha3 = { version = "0.10.8", features = [] }
 tokio = { version = "1.37.0", default-features = false }
+
+[patch."https://github.com/alloy-rs/alloy"]
+alloy-eips = { path = "../alloy/crates/eips" }

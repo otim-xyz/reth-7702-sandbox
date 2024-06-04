@@ -13,10 +13,6 @@
 )]
 #![deny(rust_2018_idioms, unsafe_code)]
 
-mod eip7702;
-
-use alloy_primitives::U160;
-use eip7702::TxEip7702;
 use futures_util::StreamExt;
 use reth::{
     builder::{NodeBuilder, NodeHandle},
@@ -32,15 +28,21 @@ use reth::{
 };
 use reth_node_core::{args::RpcServerArgs, node_config::NodeConfig};
 use reth_node_ethereum::EthereumNode;
-use reth_primitives::{b256, hex, ChainSpec, Genesis, U256};
+use reth_primitives::{b256, ChainSpec, Genesis};
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let k = "d42bf368dcc16cfa37bfec8f0529fd908a7049dfa45f651926b5b138450b8817";
-    let _pk = "407935c2575e9a572a3ede4c772be0eb5cc557fc658f2cc4c7b56c694f1c8ed4a20338ce02c642531290909db39b52acda008f8783a7ac69d388d2faf5413563";
-    let _address1 = "8ef4c3785d21f0e3c83e8518ce7fa70f0b00ba5b";
-    let address2 = "6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b";
+    // Address A
+    // e15ae99ce6d60a47c81e6500bc4ca643d670c0ba591f7539df72229feb0cee07
+    // 0x81B6e2Aa3AF93E5e3299d692b6e9a9957ED1d724
+
+    // Address B
+    // ab0dd18b1e1db01dc7af7042bdc8c97c59245d5cde13c5b87096893ac00318c8
+    // 0x2d0FFF0846D9e9660103Dd1a176e133D1b246553
+
+    // Signed by address A
+    let tx_7702 = "0x04f8b2820a288084163ef00185081527974c82f6f594dac17f958d2ee523a2206206994597c13d831ec7b844a9059cbb0000000000000000000000005a96834046c1dff63119eb0eed6330fc5007a1d700000000000000000000000000000000000000000000000000000001a1432720c0c080a0f1239b70d8d60e1470337164c5851727f4569725c90a9e26120ae74d3071e98da041254f877871353c35b4191eca4b0486531ae17f3b7d231e4f00225bacb718e4";
 
     let tasks = TaskManager::current();
 
@@ -84,27 +86,15 @@ async fn main() -> eyre::Result<()> {
 
     let mut notifications = node.provider.canonical_state_stream();
 
-    // 4 || rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, data, access_list, [[contract_code, y_parity, r, s], ...], signature_y_parity, signature_r, signature_s])
-    let tx = TxEip7702 {
-        chain_id: 1,
-        nonce: 0,
-        max_priority_fee_per_gas: 1_234,
-        max_fee_per_gas: 4_567,
-        gas_limit: 8_910,
-        to: U160::from_be_bytes::<20>(
-            hex::decode(address2).unwrap().try_into().unwrap(),
-        ),
-        amount: U256::from(1_000_000),
-        data: 0,
-        access_list: vec![],
-        code_bundles: vec![],
-    };
-    let signed_tx = tx.sign(k);
-    let encoded_tx = signed_tx.rlp_encode();
-
     let eth_api = node.rpc_registry.eth_api();
 
-    let hash = eth_api.send_raw_transaction(encoded_tx.into()).await?;
+    let hash = eth_api
+        .send_raw_transaction(
+            hex::decode(tx_7702.trim_start_matches("0x"))
+                .unwrap()
+                .into(),
+        )
+        .await?;
 
     let expected = b256!(
         "b1c6512f4fc202c04355fbda66755e0e344b152e633010e8fd75ecec09b63398"
@@ -132,10 +122,10 @@ fn custom_chain() -> Arc<ChainSpec> {
     "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "coinbase": "0x0000000000000000000000000000000000000000",
     "alloc": {
-        "0x8ef4c3785d21f0e3c83e8518ce7fa70f0b00ba5b": {
+        "0x81B6e2Aa3AF93E5e3299d692b6e9a9957ED1d724": {
             "balance": "0x4a47e3c12448f4ad000000"
         },
-        "0x6Be02d1d3665660d22FF9624b7BE0551ee1Ac91b": {
+        "0x2d0FFF0846D9e9660103Dd1a176e133D1b246553": {
             "balance": "0x4a47e3c12448f4ad000000"
         }
     },

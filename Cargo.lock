@@ -138,7 +138,7 @@ dependencies = [
  "alloy-eips",
  "alloy-primitives",
  "alloy-rlp",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
  "c-kzg",
  "serde",
 ]
@@ -164,11 +164,10 @@ dependencies = [
 [[package]]
 name = "alloy-eips"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy?rev=dd7a999#dd7a999d9efe259c47a34dde046952de795a8f6a"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
- "alloy-serde",
+ "alloy-serde 0.1.0",
  "arbitrary",
  "c-kzg",
  "derive_more",
@@ -185,7 +184,7 @@ version = "0.1.0"
 source = "git+https://github.com/alloy-rs/alloy?rev=dd7a999#dd7a999d9efe259c47a34dde046952de795a8f6a"
 dependencies = [
  "alloy-primitives",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
  "serde",
  "serde_json",
 ]
@@ -261,7 +260,7 @@ dependencies = [
  "alloy-genesis",
  "alloy-primitives",
  "alloy-rlp",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
  "alloy-sol-types",
  "itertools 0.12.1",
  "jsonrpsee-types",
@@ -276,7 +275,7 @@ version = "0.1.0"
 source = "git+https://github.com/alloy-rs/alloy?rev=dd7a999#dd7a999d9efe259c47a34dde046952de795a8f6a"
 dependencies = [
  "alloy-primitives",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
  "serde",
 ]
 
@@ -302,7 +301,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "alloy-rpc-types",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
  "jsonrpsee-types",
  "jsonwebtoken 9.3.0",
  "rand 0.8.5",
@@ -317,7 +316,16 @@ source = "git+https://github.com/alloy-rs/alloy?rev=dd7a999#dd7a999d9efe259c47a3
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
- "alloy-serde",
+ "alloy-serde 0.1.0 (git+https://github.com/alloy-rs/alloy?rev=dd7a999)",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "alloy-serde"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
  "serde",
  "serde_json",
 ]
@@ -5093,18 +5101,14 @@ dependencies = [
 name = "reth-7702-sandbox"
 version = "0.0.0"
 dependencies = [
- "alloy-primitives",
- "alloy-rlp",
  "eyre",
  "futures-util",
  "hex",
- "k256",
  "reth",
  "reth-node-core",
  "reth-node-ethereum",
  "reth-primitives",
  "serde_json",
- "sha3",
  "tokio",
 ]
 
